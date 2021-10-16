@@ -1,66 +1,124 @@
-import { useState, useEffect, Suspense, lazy } from "react";
-import { Route, useParams } from "react-router";
-import { NavLink, useRouteMatch, useLocation, Link } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import {
+  Link,
+  Switch,
+  Route,
+  useRouteMatch,
+  useLocation,
+} from "react-router-dom";
+import PropTypes from "prop-types";
 
-import Container from "@material-ui/core/Container";
-import ArrowBackIosIcon from "@material-ui/icons/ArrowBackIos";
+import { fetchMovieDetails } from "../../api/MovieApi";
+import { Cast } from "../Cast/Cast";
+import { Reviews } from "../Reviews/Reviews";
 
-import { fetchMoviesById } from "../../api/MovieApi";
-import { loadingStateStatus } from "../../utils/StateStatus";
-import MovieDetails from "../MovieCard/MovieDetailsCard";
+MovieDetailsPage.propTypes = {
+  history: PropTypes.object.isRequired,
+  location: PropTypes.object.isRequired,
+  match: PropTypes.object.isRequired,
+};
 
-const Reviews = lazy(() => import("../Reviews/Reviews"));
-const Cast = lazy(() => import("../Cast/Cast"));
-
-export default function MovieDetailsPage() {
-  const [loadStatus, setLoadStatus] = useState(loadingStateStatus.IDLE);
+function MovieDetailsPage(props) {
   const [movie, setMovie] = useState(null);
-  let { movieId } = useParams();
-  const { url, path } = useRouteMatch();
+  const [from, setFrom] = useState("");
+  const [search, setSearch] = useState("");
+  const [error, setError] = useState("");
   const location = useLocation();
-  const [prevLocation, setPrevLocation] = useState(
-    location?.state?.from ?? "/"
-  );
-  useEffect(() => {
-    setLoadStatus(loadingStateStatus.PENDING);
+  const movieId = useRouteMatch().params.movieId;
 
-    fetchMoviesById(movieId).then((result) => {
-      setMovie(result);
-      setLoadStatus(loadingStateStatus.RESOLVED);
-    });
+  useEffect(() => {
+    (async () => {
+      try {
+        const getMovieDetails = await fetchMovieDetails(movieId);
+        setMovie(getMovieDetails);
+      } catch (error) {
+        if (error.response) {
+          setError(error.response.data.status_message);
+        }
+      }
+    })();
   }, [movieId]);
 
+  useEffect(() => {
+    setFrom(location.state && location.state.from ? location.state.from : "/");
+    setSearch(
+      location.state && location.state.search ? location.state.search : ""
+    );
+  }, [location.state]);
+
+  const handelClick = () =>
+    props.history.push({
+      pathname: from,
+      search: search,
+    });
+
   return (
-    <section className="movieDetails">
-      {loadStatus === loadingStateStatus.PENDING}
-      {loadStatus === loadingStateStatus.RESOLVED && (
-        <Container maxWidth={"md"}>
-          <Link to={prevLocation}>
-            <ArrowBackIosIcon />
-            <span>Go back</span>
-          </Link>
-          <MovieDetails movie={movie} />
-          <ul>
-            <li>
-              <NavLink to={`${url}/cast`}>Cast</NavLink>
-            </li>
-            <li>
-              <NavLink to={`${url}/reviews`}>Reviews</NavLink>
-            </li>
-          </ul>
-          <Suspense>
-            <Route path={`${path}/cast`}>
-              <Cast />
-            </Route>
-            <Route path={`${path}/reviews`}>
-              <Reviews />
-            </Route>
-          </Suspense>
-        </Container>
-      )}
-      {loadStatus === loadingStateStatus.REJECTED && (
-        <h2>Something wrong ...</h2>
-      )}
-    </section>
+    <>
+      <button type="button" onClick={handelClick} className="btn">
+        Go back
+      </button>
+      {(movie && (
+        <>
+          <div>
+            {movie.poster_path && (
+              <img
+                src={`https://image.tmdb.org/t/p/w300${movie.poster_path}`}
+                width="300"
+                alt={movie.title || movie.name}
+              />
+            )}
+            <div className="descr">
+              <h2>{movie.title || movie.name}</h2>
+              <p>User score: {movie.vote_average * 10}%</p>
+              <h3>Overview</h3>
+              <p>{movie.overview || "This movie has no overview yet."}</p>
+              <h3>Genres</h3>
+              <ul>
+                {movie.genres.map((el) => (
+                  <li key={el.id}>{el.name}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
+          <div>
+            <p>Additional information</p>
+            <ul>
+              <li>
+                <Link
+                  to={{
+                    pathname: `/movies/${movie.id}/cast`,
+                    state: {
+                      search: search,
+                      from: from,
+                    },
+                  }}
+                >
+                  Cast
+                </Link>
+              </li>{" "}
+              <li>
+                <Link
+                  to={{
+                    pathname: `/movies/${movie.id}/reviews`,
+                    state: {
+                      search: search,
+                      from: from,
+                    },
+                  }}
+                >
+                  Reviews
+                </Link>
+              </li>
+            </ul>
+          </div>
+          <Switch>
+            <Route path="/movies/:movieId/cast" component={Cast} />
+            <Route path="/movies/:movieId/reviews" component={Reviews} />
+          </Switch>
+        </>
+      )) ||
+        (error && <p className="descr">{error}</p>)}
+    </>
   );
 }
+export default MovieDetailsPage;

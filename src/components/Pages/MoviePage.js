@@ -1,72 +1,87 @@
-import { useState, useEffect } from "react";
-import { useRouteMatch, useLocation, useHistory } from "react-router-dom";
+import React, { useState, useEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
+import PropTypes from "prop-types";
+import queryString from "query-string";
+import { FetchMoviesBySearchQuery } from "../../api/MovieApi";
 
-import Container from "@material-ui/core/Container";
+MoviesPage.propTypes = {
+  history: PropTypes.object.isRequired,
+  location: PropTypes.object.isRequired,
+  match: PropTypes.object.isRequired,
+};
 
-import { fetchMoviesByName } from "../../api/MovieApi";
-import { loadingStateStatus } from "../../utils/StateStatus";
-import MovieGallery from "../MovieGallery/MovieGallery";
-
-import ErrorNotification from "../ErrorNotifications/ErrorNotifications";
-
-export default function MoviesPage() {
-  const [loadStatus, setLoadStatus] = useState(loadingStateStatus.IDLE);
+function MoviesPage(props) {
+  const [query, setQuery] = useState("");
   const [movies, setMovies] = useState([]);
-  const [pageNumber, setPageNumber] = useState(1);
-  const [error, setError] = useState(null);
-  const { url } = useRouteMatch();
+  const [notice, setNotice] = useState("");
   const location = useLocation();
-  const history = useHistory();
+  const search = queryString.parse(location.search);
 
-  const searchQuery = new URLSearchParams(location.search).get("query");
+  const handleChange = ({ target: { value } }) => {
+    setQuery(value);
+  };
+
+  const handleSubmit = (evt) => {
+    evt.preventDefault();
+    props.history.push({
+      search: `query=${query}`,
+    });
+    setQuery("");
+  };
 
   useEffect(() => {
-    if (searchQuery === null) return;
-    if (searchQuery === "") {
-      setError("Please, enter movie!");
-      setLoadStatus(loadingStateStatus.REJECTED);
-      return;
-    }
-
-    setLoadStatus(loadingStateStatus.PENDING);
-    fetchMoviesByName(searchQuery, pageNumber)
-      .then((movies) => {
-        setMovies(movies.results);
-
-        if (movies.results.length !== 0) {
-          setLoadStatus(loadingStateStatus.RESOLVED);
-        } else {
-          setError(`No results for "${searchQuery}" :( )`);
-          setLoadStatus(loadingStateStatus.REJECTED);
-        }
-      })
-      .catch((error) => {
-        setError(error.message);
-        setLoadStatus(loadingStateStatus.REJECTED);
-      });
-  }, [searchQuery, location, pageNumber]);
-
-  // const onSearchFormSubmit = (searchQuery) => {
-  //   history.push({ ...location, search: `query=${searchQuery}` });
-  // };
+    search.query &&
+      FetchMoviesBySearchQuery(search.query)
+        .then((results) => {
+          if (results.length) {
+            setNotice("");
+            setMovies(results);
+          } else {
+            setMovies([]);
+            setNotice("Sorry, we can't find anything for your request");
+          }
+        })
+        .catch((error) => setNotice(error.response.data.status_message));
+  }, [search.query]);
 
   return (
-    <>
-      <section>
-        <Container maxWidth={"md"}>
-          <h1>Information about movie</h1>
+    <div>
+      <h2>MoviesPage</h2>
+      <form onSubmit={handleSubmit}>
+        <input
+          type="text"
+          autoComplete="off"
+          autoFocus
+          placeholder="Search movies"
+          name="query"
+          value={query}
+          onChange={handleChange}
+        />
 
-          {/* <MovieSearchForm getFormData={onSearchFormSubmit} /> */}
+        <button type="submit" className="SearchForm-button">
+          <span className="SearchForm-button-label">Search</span>
+        </button>
+      </form>
 
-          {loadStatus === loadingStateStatus.PENDING}
-          {loadStatus === loadingStateStatus.RESOLVED && (
-            <MovieGallery movies={movies} url={url} />
-          )}
-          {loadStatus === loadingStateStatus.REJECTED && (
-            <ErrorNotification message={error} />
-          )}
-        </Container>
-      </section>
-    </>
+      <ul>
+        {movies.map((movie) => (
+          <li key={movie.id}>
+            <Link
+              to={{
+                pathname: `/movies/${movie.id}`,
+                state: {
+                  search: location && location.search ? location.search : "",
+                  from: props.location.pathname,
+                },
+              }}
+            >
+              {movie.title || movie.name}
+            </Link>
+          </li>
+        ))}
+      </ul>
+      {notice && <p>{notice}</p>}
+    </div>
   );
 }
+export default MoviesPage;

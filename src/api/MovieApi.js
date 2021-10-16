@@ -1,46 +1,32 @@
-import { BASE_URL, API_KEY } from "./MovieUrl";
+import axios from "axios";
+const apiKey = "d33b1ea5c36bf52f0f9bd815b8fbc228";
 
-function responseStatusHandling(response) {
-  if (response.ok) {
-    return response.json();
-  }
-  throw new Error("Sorry, something happened! We are working on it!");
-}
+axios.defaults.baseURL = "https://api.themoviedb.org";
 
-function fetchMoviesByName(movieName, pageNumber) {
-  return fetch(
-    `${BASE_URL}/search/movie?api_key=${API_KEY}&page=${pageNumber}&language=en-US&include_adult=false&query=${movieName}`
-  ).then(responseStatusHandling);
-}
-//список самых популярных фильмов на сегодня
-function fetchPopularMoviesByDay(pageNumber) {
-  return fetch(
-    `${BASE_URL}/trending/movie/day?api_key=${API_KEY}&page=${pageNumber}&language=en-US`
-  ).then(responseStatusHandling);
-}
-//поиск кинофильма по ключевому слову
-function fetchMoviesById(movieId) {
-  return fetch(
-    `${BASE_URL}/movie/${movieId}?api_key=${API_KEY}&language=en-US`
-  ).then(responseStatusHandling);
-}
-//запрос информации о актёрском составе
-function fetchMoviesByCast(movieId) {
-  return fetch(
-    `${BASE_URL}/movie/${movieId}/credits?api_key=${API_KEY}&language=en-US`
-  ).then(responseStatusHandling);
-}
-//запрос обзоров
-function fetchMoviesByReviews(movieId, pageNumber) {
-  return fetch(
-    `${BASE_URL}/movie/${movieId}/reviews?api_key=${API_KEY}&language=en-US&page=${pageNumber}`
-  ).then(responseStatusHandling);
-}
-
-export {
-  fetchMoviesByName,
-  fetchPopularMoviesByDay,
-  fetchMoviesById,
-  fetchMoviesByCast,
-  fetchMoviesByReviews,
+export const fetchTrendingMovies = () => {
+  return axios
+    .get(`/3/trending/all/day?api_key=${apiKey}`)
+    .then((res) => res.data.results);
+};
+export const FetchMoviesBySearchQuery = (query) => {
+  return axios
+    .get(
+      `/3/search/movie?api_key=${apiKey}&language=en-US&query=${query}&page=1&include_adult=false`
+    )
+    .then((res) => res.data.results);
+};
+export const fetchMovieDetails = (movieId) => {
+  return axios
+    .get(`/3/movie/${movieId}?api_key=${apiKey}&language=en-US`)
+    .then((res) => res.data);
+};
+export const fetchCastAndCrew = (movieId) => {
+  return axios
+    .get(`/3/movie/${movieId}/credits?api_key=${apiKey}`)
+    .then((res) => res.data.cast);
+};
+export const fetchMovieReviews = (movieId) => {
+  return axios
+    .get(`/3/movie/${movieId}/reviews?api_key=${apiKey}&language=en-US&page=1`)
+    .then((res) => res.data.results);
 };

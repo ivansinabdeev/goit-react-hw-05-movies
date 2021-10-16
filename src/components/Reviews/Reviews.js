@@ -1,47 +1,30 @@
-import { useEffect, useState } from "react";
-import { useParams } from "react-router";
-import { fetchMoviesByReviews } from "../../api/MovieApi";
-import { loadingStateStatus } from "../../utils/StateStatus";
+import React, { useState, useEffect } from "react";
+import { useRouteMatch } from "react-router-dom";
+import { fetchMovieReviews } from "../../api/MovieApi";
 
-import ReviewsList from "../Reviews/ReviewsList";
-import ErrorNotification from "../ErrorNotifications/ErrorNotifications";
-
-let pageNumber = 1;
-export default function Reviews() {
-  const [loadStatus, setLoadStatus] = useState(loadingStateStatus.IDLE);
-  const [reviews, setReviews] = useState(null);
-  const [error, setError] = useState("");
-  const { movieId } = useParams();
+export function Reviews() {
+  const [reviews, setReviews] = useState([]);
+  const movieId = useRouteMatch().params.movieId;
 
   useEffect(() => {
-    setLoadStatus(loadingStateStatus.PENDING);
-
-    fetchMoviesByReviews(movieId, pageNumber)
-      .then((response) => {
-        setReviews(response.results);
-
-        if (response.results.length !== 0) {
-          setLoadStatus(loadingStateStatus.RESOLVED);
-        } else {
-          setError("No reviews");
-          setLoadStatus(loadingStateStatus.REJECTED);
-        }
-      })
-      .catch((error) => {
-        setError(error.message);
-        setLoadStatus(loadingStateStatus.REJECTED);
-      });
+    (async () => {
+      const getMovieReviews = await fetchMovieReviews(movieId);
+      setReviews(getMovieReviews);
+    })();
   }, [movieId]);
 
   return (
     <>
-      {loadStatus === loadingStateStatus.PENDING}
-      {loadStatus === loadingStateStatus.RESOLVED && (
-        <ReviewsList reviewsData={reviews} />
-      )}
-      {loadStatus === loadingStateStatus.REJECTED && (
-        <ErrorNotification message={error} />
-      )}
+      {(reviews.length && (
+        <ul>
+          {reviews.map((review) => (
+            <li key={review.id}>
+              <h3>Author: {review.author}</h3>
+              <p>{review.content}</p>
+            </li>
+          ))}
+        </ul>
+      )) || <p className="descr">We don't have any reviews for this movie.</p>}
     </>
   );
 }

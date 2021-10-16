@@ -1,46 +1,42 @@
-import React from "react";
-import { useState, useEffect } from "react";
-import { fetchPopularMoviesByDay } from "../../api/MovieApi";
-import { loadingStateStatus } from "../../utils/StateStatus";
-import MovieGallery from "../MovieGallery/MovieGallery";
-import ErrorNotification from "../ErrorNotifications/ErrorNotifications";
+import React, { useState, useEffect } from "react";
+import PropTypes from "prop-types";
+import { Link } from "react-router-dom";
+import { fetchTrendingMovies } from "../../api/MovieApi";
 
-import Container from "@material-ui/core/Container";
+HomePage.propTypes = {
+  history: PropTypes.object.isRequired,
+  location: PropTypes.object.isRequired,
+  match: PropTypes.object.isRequired,
+};
 
-export default function HomePage() {
-  const [loadStatus, setLoadStatus] = useState(loadingStateStatus.IDLE);
+function HomePage(props) {
   const [movies, setMovies] = useState([]);
-  const [pageNumber, setPageNumber] = useState(1);
-  const [error, setError] = useState(null);
 
   useEffect(() => {
-    setLoadStatus(loadingStateStatus.PENDING);
-
-    fetchPopularMoviesByDay(pageNumber)
-      .then((movies) => {
-        setMovies(movies.results);
-        setLoadStatus(loadingStateStatus.RESOLVED);
-      })
-      .catch((error) => {
-        setError(error.message);
-        setLoadStatus(loadingStateStatus.REJECTED);
-      });
-  }, [pageNumber]);
+    (async () => {
+      const data = await fetchTrendingMovies();
+      setMovies(data);
+    })();
+  }, []);
 
   return (
     <>
-      <section>
-        <Container maxWidth={"md"}>
-          <h1>Trending today</h1>
-          {loadStatus === loadingStateStatus.PENDING}
-          {loadStatus === loadingStateStatus.RESOLVED && (
-            <MovieGallery movies={movies} url="/movies" />
-          )}
-          {loadStatus === loadingStateStatus.REJECTED && (
-            <ErrorNotification message={error} />
-          )}
-        </Container>
-      </section>
+      <h1>Trending Today</h1>
+      <ul>
+        {movies.map((movie) => (
+          <li key={movie.id}>
+            <Link
+              to={{
+                pathname: `/movies/${movie.id}`,
+                state: { from: props.location.pathname },
+              }}
+            >
+              {movie.title || movie.name}
+            </Link>
+          </li>
+        ))}
+      </ul>
     </>
   );
 }
+export default HomePage;

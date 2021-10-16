@@ -1,34 +1,38 @@
-import { useEffect, useState } from "react";
-import { useParams } from "react-router";
+import React, { useState, useEffect } from "react";
+import { useRouteMatch } from "react-router-dom";
+import { fetchCastAndCrew } from "../../api/MovieApi";
 
-import { fetchMoviesByCast } from "../../api/MovieApi";
-import { loadingStateStatus } from "../../utils/StateStatus";
-// import Loader from "../../components/Loader/Loader";
-import CastList from "./CastList";
-
-export default function Cast() {
-  const [loadStatus, setLoadStatus] = useState(loadingStateStatus.IDLE);
-  const [cast, setCast] = useState(null);
-  const { movieId } = useParams();
+export function Cast() {
+  const [cast, setCast] = useState([]);
+  const movieId = useRouteMatch().params.movieId;
 
   useEffect(() => {
-    setLoadStatus(loadingStateStatus.PENDING);
-
-    fetchMoviesByCast(movieId).then((response) => {
-      setCast(response.cast);
-
-      setLoadStatus(loadingStateStatus.RESOLVED);
-    });
+    (async () => {
+      const getMovieCast = await fetchCastAndCrew(movieId);
+      setCast(getMovieCast);
+    })();
   }, [movieId]);
 
   return (
     <>
-      {loadStatus === loadingStateStatus.PENDING}
-      {loadStatus === loadingStateStatus.RESOLVED && (
-        <CastList castData={cast} />
-      )}
-      {loadStatus === loadingStateStatus.REJECTED && (
-        <h2>Something wrong ...</h2>
+      {(cast.length && (
+        <ul>
+          {cast.map((actor) => (
+            <li key={actor.id}>
+              {actor.profile_path && (
+                <img
+                  src={`https://image.tmdb.org/t/p/w300${actor.profile_path}`}
+                  width="200"
+                  alt={actor.name}
+                />
+              )}
+              <h3>{actor.name}</h3>
+              <p>Character: {actor.character}</p>
+            </li>
+          ))}
+        </ul>
+      )) || (
+        <p className="descr">The resource you requested could not be found.</p>
       )}
     </>
   );
